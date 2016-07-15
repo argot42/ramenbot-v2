@@ -1,0 +1,10 @@
+{
+    "host" : "chat.freenode.net",
+    "port" : 6667,
+    "nick" : "ramenbot",
+    "channels" : ["#sushichan"],
+    "prefix" : ".",
+    "password" : false,
+    "ssl" : false,
+    "db" : "~/.ramenbot/ramen.db"
+}

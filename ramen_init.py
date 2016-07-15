@@ -1,0 +1,41 @@
+import sys
+import json
+from os.path import expanduser
+
+# config path
+cfg_path = "~/.ramenbot/ramenrc.json"
+
+if len(sys.argv) >= 2:
+    cfg_path = sys.argv[1]
+
+# get config from json file
+try:
+    fd = open(expanduser(cfg_path), 'r')
+    config = json.load(fd)
+
+except FileNotFoundError as err:
+    print("Configuration file not found [{0}]".format(cfg_path), file=sys.stderr)
+    sys.exit(2)
+
+except json.decoder.JSONDecodeError:
+    print("Provide a valid json file as configuration", file=sys.stderr)
+    sys.exit(1)
+
+
+# try to connect to server
+try:
+    bowl = Bowl(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=config['db'], 
+            ssl=config['ssl'], prefix=config['prefix'], password=config['password'])
+    bowl.connect()
+
+except KeyError:
+    print("The configuration provided is not valid")
+    sys.exit(1)
+
+except KeyboardInterrupt:
+    # terminar conexion con db y servidor!!
+    print("Goodbye ;-)")
+    sys.exit(0)
+
+except:
+    raise

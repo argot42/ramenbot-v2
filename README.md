@@ -1,2 +1,2 @@
 # ramenbot-v2
-Enhanced version of ramenbot
+ramenbot - Love-filled, handcrafted, bad-coded, python irc bot ❤
