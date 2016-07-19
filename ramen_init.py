@@ -2,6 +2,8 @@ import sys
 import json
 from os.path import expanduser
 
+from bowl import Bowl
+
 # config path
 cfg_path = "~/.ramenbot/ramenrc.json"
 

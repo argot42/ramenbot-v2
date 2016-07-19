@@ -1,8 +1,8 @@
 {
-    "host" : "chat.freenode.net",
+    "host" : "irc.rizon.net",
     "port" : 6667,
     "nick" : "ramenbot",
-    "channels" : ["#sushichan"],
+    "channels" : ["#fflush"],
     "prefix" : ".",
     "password" : false,
     "ssl" : false,
