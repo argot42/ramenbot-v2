@@ -1,7 +1,7 @@
 __version__ = "2.0"
 
-retry_times = 5
-retry_delay = .5
+RETRY_TIMES = 5
+RETRY_DELAY = .5
 MULTI = True
 
 

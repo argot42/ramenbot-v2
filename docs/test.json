@@ -1,8 +1,8 @@
 {
-    "host" : "irc.rizon.net",
+    "host" : "192.168.121.66",
     "port" : 6667,
-    "nick" : "ramenbot2_test",
-    "channels" : ["#fflush"],
+    "nick" : "ramenbot",
+    "channels" : ["#test"],
     "prefix" : ".",
     "password" : false,
     "ssl" : false,

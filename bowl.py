@@ -1,10 +1,10 @@
 import sys, socket, ssl, time
 from os.path import expanduser
-from multiprocessing import Process, Lock, Queue
+from multiprocessing import Process, Event, Queue
 
 #from ramen import Ramen
 #from chopsticks import Chopsticks
-from ramenutils import RETRY_DELAY, RETRY_TIMES, MULTI, N_CONSUMER, N_PRODUCER
+from ramenutils import RETRY_DELAY, RETRY_TIMES, MULTI
 
 #import bowlerror
 
@@ -48,6 +48,7 @@ class Bowl:
             except:
                 raise
 
+            print("Retrying in {}s...".format(RETRY_DELAY * (retry_n + 1)))
             time.sleep(RETRY_DELAY * (retry_n + 1))
 
 
@@ -75,6 +76,9 @@ class Bowl:
         ircsock.send(bytes("PONG :{}\n".format(arg), "UTF-8")) 
 
 
+    def kicked(self, ircsock, arg):
+        print("Kicked!")
+
 
     ################################### multi process ##########################################
     ############################################################################################
@@ -82,57 +86,64 @@ class Bowl:
     def start_multi(self, ircsock):
         """ Start main bot function [obtain msg, store command] / [execute command, send output back] that supports multiprocess """      
         
-        process_pool = []
-        producer_lock = Lock()
-        consumer_lock = Lock()
         msg_queue = Queue()
+        queue_event = Event()
 
-        # generating producers
-        for i in range(PRODUCER_N): process_pool.append(Process(target=self.listening, args=(ircsock, consumer_lock, queue,)))
+        producer = Process(target=self.listening, args=(ircsock, queue_event, msg_queue,))
+        consumer = Process(target=self.answering, args=(ircsock, queue_event, msg_queue,))
 
-        # generating consumers
-        for i in range(CONSUMER_N): process_pool.append(Process(target=self.answering, args=(ircsock, producer_lock, queue,)))
-
-        # start
-        for proc in process_pool:
-            proc.start()
+        producer.start()
+        consumer.start()
+        producer.join()
+        consumer.join()
 
 
-    def listening(self, ircsock, consumer_lock, queue):
-        """ Obtain msg, queue command [producer] """
-
-        consumer_lock.acquire()
+    def listening(self, ircsock, queue_event, queue):
+        """ Obtain msg, queue command """
 
         # get msg
-        msg = self.get_msg(ircsock)
-        # extract command
-        command = self.get_comm(msg)
+        for msg in self.get_msg(ircsock):
+            print(">", msg)
 
-        if type(command) == 'ping':
-            self.ping(ircsock, command.argument)
+            # extract command
+            command = self.get_comm(msg)
 
-        elif type(command) == 'kick':
-            print("KICKED")
+            # if not a command check next msg
+            if not command: continue
 
-        else:
-            queue.put(command)
-            consumer_lock.release()
+            # if full queue wait for answering to consume commands
+            if queue.full(): queue_event.wait()
+
+            # check for special cases
+            # if it's a normal command store it in the queue (can happen if queue is empty)
+            if type(command) == 'ping':
+                self.ping(ircsock, command.argument)
+
+            elif type(command) == 'kick':
+                self.kicked(ircsock, command.argument)
+
+            else:
+                queue.put(command)
+                # unlock answering process
+                queue_event.set()
+
         
 
-    def answering(self, ircsock, producer_lock, queue):
+    def answering(self, ircsock, queue_event, queue):
         """ Get command, execute it, and send back the output """
 
-        producer_lock.acquire()
+        # if queue empty wait for producer to add commands
+        if queue.empty(): queue_event.wait()
 
-        if queue.qsize() != 0:
-            command = queue.get()
-            response = self.execute(command)
+        # get command from queue
+        command = queue.get()
 
-            self.send(response)
+        # execute command
+        self.send(command.execute())
 
-        producer_lock.release()
-        time.sleep(5)
-
+        # unlock listening process if locked (can happen if queue is full)
+        queue_event.set()
+            
 
     ############################################################################################
     ############################################################################################
@@ -144,6 +155,31 @@ class Bowl:
     def start_single(self, ircsock):
         return True
 
+    
+    def get_msg(self, ircsock):
+        line_buffer = str()
+
+        while True:
+            try:
+                readbuffer = ircsock.recv(1024).decode('utf-8')
+                head, *mid, tail = readbuffer.split('\n') 
+
+                yield line_buffer + head
+
+                line_buffer = str()
+
+                for msg in mid:
+                    yield msg
+
+                line_buffer = line_buffer + tail
+
+            except ValueError:
+                line_buffer = line_buffer + readbuffer
+                           
+            
+    def get_comm(self, msg):
+        return None
+
 
     ############################################################################################
     ############################################################################################
@@ -151,6 +187,10 @@ class Bowl:
 
     ################################# atribute checking ########################################
     ############################################################################################
+
+    #
+    # TODO
+    #
 
     def check_host(host):
         return host
