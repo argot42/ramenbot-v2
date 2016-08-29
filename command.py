@@ -5,4 +5,8 @@ class Command:
 
 
     def exec(self):
-        #TODO
+        try:
+            return self.function(self.args) 
+
+        except:
+            raise

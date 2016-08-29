@@ -2,7 +2,7 @@ import sys
 import json
 from os.path import expanduser
 
-from bowl import Bowl
+from irc import IRC
 
 # config path
 cfg_path = "~/.ramenbot/ramenrc.json"
@@ -26,9 +26,9 @@ except json.decoder.JSONDecodeError:
 
 # try to connect to server
 try:
-    bowl = Bowl(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=config['db'], 
+    irc = IRC(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=config['db'], 
             ssl=config['ssl'], prefix=config['prefix'], password=config['password'])
-    bowl.connect()
+    irc.connect()
 
 except KeyError:
     print("The configuration provided is not valid")

@@ -2,13 +2,10 @@ import sys, socket, ssl, time
 from os.path import expanduser
 from multiprocessing import Process, Event, Queue
 
-#from ramen import Ramen
-#from chopsticks import Chopsticks
-from ramenutils import RETRY_DELAY, RETRY_TIMES, MULTI
+from com_manager import Commanager
+from utils import RETRY_DELAY, RETRY_TIMES, MULTI
 
-#import bowlerror
-
-class Bowl:
+class IRC:
     def __init__(self, host, port, nick, channels, database, prefix, password, ssl):
         self.host = Bowl.check_host(host)
         self.port = Bowl.check_port(port)
@@ -19,10 +16,9 @@ class Bowl:
         self.password = Bowl.check_password(password)
         self.ssl = Bowl.check_ssl(ssl)
 
+        # load commands
+
         # create database
-        #chop = Chopsticks(self.database)
-        #setup db table structure
-        #chop.setup()
         
 
     def connect(self):
