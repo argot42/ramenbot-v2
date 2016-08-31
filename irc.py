@@ -3,18 +3,19 @@ from os.path import expanduser
 from multiprocessing import Process, Event, Queue
 
 from com_manager import Commanager
+from parser import Parser
 from utils import RETRY_DELAY, RETRY_TIMES, MULTI
 
 class IRC:
     def __init__(self, host, port, nick, channels, database, prefix, password, ssl):
-        self.host = Bowl.check_host(host)
-        self.port = Bowl.check_port(port)
-        self.nick = Bowl.check_nick(nick)
-        self.channels = Bowl.check_channels(channels)
-        self.database = Bowl.check_database(database)
-        self.prefix = Bowl.check_prefix(prefix)
-        self.password = Bowl.check_password(password)
-        self.ssl = Bowl.check_ssl(ssl)
+        self.host = IRC.check_host(host)
+        self.port = IRC.check_port(port)
+        self.nick = IRC.check_nick(nick)
+        self.channels = IRC.check_channels(channels)
+        self.database = IRC.check_database(database)
+        self.prefix = IRC.check_prefix(prefix)
+        self.password = IRC.check_password(password)
+        self.ssl = IRC.check_ssl(ssl)
 
         # load commands
 
@@ -97,6 +98,9 @@ class IRC:
     def listening(self, ircsock, queue_event, queue):
         """ Obtain msg, queue command """
 
+        # start parser
+        parser = Parser(msg=(r':(?P<nick>[\w-\[\]\{\}\\]+)!.+@[\w_\/\.]+ [A-Z]+ (?P<receiver>#{0,1}\w+) :(?P<body>.+)', 0))
+
         # get msg
         for msg in self.get_msg(ircsock):
             print(">", msg)
@@ -111,7 +115,7 @@ class IRC:
             if queue.full(): queue_event.wait()
 
             # check for special cases
-            # if it's a normal command store it in the queue (can happen if queue is empty)
+            # if it's a normal command store it in the queue
             if type(command) == 'ping':
                 self.ping(ircsock, command.argument)
 
