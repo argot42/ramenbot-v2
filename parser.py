@@ -1,32 +1,22 @@
-import re
+#import re
 
 class Parser:
- #   def __init__(self, *irc_commands, **regex_dict):
-        #self.regex = dict()
-
-        #try:
-        #    for name, regex_tuple in regex_dict.items():
-        #        self.regex[name] = re.compile(regex_tuple[0], regex_tuple[1])   # regex_tuple[0] = regex string | regex_tuple[1] = option int
-        #                            
-        #except:
-        #    raise
-
     def parse_msg(msg):
-        user = str()
-        tail = list()
+        """ substring approach for parsing irc msg """
 
-        if not msg: return None, None, None
+        if not msg: raise RuntimeError
 
-        if msg[0] == ':':
-            user, msg = msg[1:].split(' ', 1)
+        substr_list = msg.split(':', 2)
 
-        if msg.find(' :') != -1:
-            msg, tail = msg.split(' :', 1)
-            args = msg.split()
-            args.append(tail)
-        else:
-            args = msg.split()
+        if not substr_list[0] == '': return '', '', substr_list[0], substr_list[1]    # sender, receiver, command, arguments
 
-        command = args.pop(0)
+        # catching MOTD and no-command msg
+        # TODO find a better way to handle this
+        if len(substr_list) < 3: return '', '', '', substr_list[0]
 
-        return user, command, args
+        user_info = substr_list[1].split(' ')
+        
+        return user_info[0][:user_info[0].find('!')], \
+                user_info[1], \
+                user_info[2], \
+                substr_list[2]
