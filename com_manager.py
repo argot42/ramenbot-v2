@@ -6,7 +6,7 @@ from command import Command
 
 class Commanager:
     def __init__(self, path):
-        """ When the class is instantiated, it loads all commands in the directory the symlink 'com' points to """
+        """ When the class is instantiated, it loads all commands (<name>_com_.py) in the directory pointed by 'path' """
 
         self.path = os.path.expanduser(path)
         self.commands = dict()
@@ -22,6 +22,7 @@ class Commanager:
 
     def mkcom(self, name, args, sender, receiver):
         try:
-            return Command(self.commands[name], args)
+            return Command(name, self.commands[name], args, sender, receiver)
 
-        except:
+        except KeyError:
+            return None

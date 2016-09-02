@@ -1,5 +1,6 @@
 class Command:
-    def __init__(self, function, args, sender, receiver):
+    def __init__(self, name, function, args, sender, receiver):
+        self.name = name
         self.function = function        # a python function
         self.args = args                # a list of arguments
         self.sender = sender            # who sent the msg
@@ -7,8 +8,4 @@ class Command:
 
 
     def exec(self):
-        try:
-            return self.function(self.args) 
-
-        except:
-            raise
+        return self.function(self.args) 

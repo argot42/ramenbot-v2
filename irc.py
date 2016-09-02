@@ -103,27 +103,52 @@ class IRC:
         for msg in self.get_msg(ircsock):
             print(">", msg)
 
-            sender, receiver, command, args = Parser.parse_msg(msg)
+            sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
 
-            try:
-                command = self.command_manager(command, args, sender, receiver)
-
-            except NotPrivMsg:
-                # if commands are not PRIVMSG handle them right away
-                if command == 'PING':
+            # if irc commands are not PRIVMSG handle them right away
+            # and get next msg
+            if irc_command != 'PRIVMSG':
+                if irc_command == 'PING':
                     IRC.ping(ircsock, args)
-
-                elif command == 'KICK':
+                elif irc_command == 'KICK':
                     IRC.kicked(ircsock, args)
 
-            else:
-                # if not a command check next msg
-                if not command: continue
+                continue
 
-                if queue.full(): queue_event.wait()
-                queue.put(command)
-                # unlock answering process
-                queue_event.set()
+            # create command
+            name, args = Parser.find_command(irc_args, self.prefix)
+            command = self.command_manager.mkcom(name, args, sender, receiver) 
+            
+            # if not command get next msg
+            if not command: continue
+
+            # check if queue is full
+            if queue.full(): queue_event.wait() 
+            queue.put(command)
+            # unlock answering process
+            queue_event.set()
+
+
+            #try:
+            #    Parser.find_command(args)
+            #    command = self.command_manager.mkcom(command, args, sender, receiver)
+
+            #except NotPrivMsg:
+            #    # if commands are not PRIVMSG handle them right away
+            #    if command == 'PING':
+            #        IRC.ping(ircsock, args)
+
+            #    elif command == 'KICK':
+            #        IRC.kicked(ircsock, args)
+
+            #else:
+            #    # if not a command check next msg
+            #    if not command: continue
+
+            #    if queue.full(): queue_event.wait()
+            #    queue.put(command)
+            #    # unlock answering process
+            #    queue_event.set()
         
 
     def answering(self, ircsock, queue_event, queue):
@@ -174,17 +199,6 @@ class IRC:
                 line_buffer = line_buffer + readbuffer
                            
             
-    def get_com(self, msg):
-        sender, receiver, command, args = Parser.parse_msg(msg)
-
-        try:
-            return self.command_manager.mkcom(command, args, sender, receiver)
-
-        except:
-            return None
-         
-         
-
     ############################################################################################
     ############################################################################################
 
