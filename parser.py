@@ -4,22 +4,19 @@ class Parser:
 
         if not msg: raise RuntimeError
 
-        substr_list = msg.split(':', 2)
+        if msg[0] != ':': 
+            command, arguments = msg.split(':')
+            return '', '', command.replace(' ', ''), arguments
 
-        if not substr_list[0] == '': return '', '', substr_list[0], substr_list[1]    # sender, receiver, irc command, arguments
+        sender, command, rest = msg[1:].split(' ', 2)
 
-        # catching MOTD and no-command msg
-        # TODO find a better way to handle this
-        if len(substr_list) < 3: return '', '', '', substr_list[0]
+        r_separator = rest.find(':')
+        if r_separator < 0: return sender, rest, command, ''
 
-        user_info = substr_list[1].split(' ')
+        s_separator = sender.find('!')
+        if s_separator > 0: sender = sender[:s_separator]
 
-
-        # sender, receiver, irc_command, arguments
-        return user_info[0][:user_info[0].find('!')], \
-                user_info[1], \
-                user_info[2], \
-                substr_list[2]
+        return sender, rest[:r_separator], command, rest[r_separator+1:]
 
 
     def find_command(irc_args, prefix):

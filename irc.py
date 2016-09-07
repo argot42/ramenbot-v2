@@ -35,7 +35,7 @@ class IRC:
                     print("ssl")
 
                 self.server_login(ircsock)
-                self.chan_join(ircsock)
+                #self.chan_join(ircsock)
 
                 if MULTI:
                     # multiprocess ramenbot
@@ -53,11 +53,12 @@ class IRC:
     def server_login(self, ircsock):
         """ Connects to the irc server and if you set up a password it logs to NickServ """
 
-        ircsock.send(bytes("USER {} {} {} :xxxx\n".format(self.nick, self.nick, self.nick), "UTF-8"))
+        ircsock.send(bytes("NICK {}\r\n".format(self.nick), "UTF-8"))
         time.sleep(.5)
 
-        ircsock.send(bytes("NICK {}\n".format(self.nick), "UTF-8"))
+        ircsock.send(bytes("USER {} {} {} :tangobot\r\n".format(self.nick, self.nick, self.nick), "UTF-8"))
         time.sleep(.5)
+
 
         if self.password:
             print("pass")
@@ -66,12 +67,12 @@ class IRC:
     def chan_join(self, ircsock):
         print("Joining Chans...")
 
-        for chan in self.channels: ircsock.send(bytes("JOIN {}\n".format(chan), "UTF-8"))
+        for chan in self.channels: ircsock.send(bytes("JOIN {}\r\n".format(chan), "UTF-8"))
 
 
     def ping(ircsock, arg):
         print("Pong!")
-        ircsock.send(bytes("PONG :{}\n".format(arg), "UTF-8")) 
+        ircsock.send(bytes("PONG :{}\r\n".format(arg), "UTF-8")) 
 
 
     def kicked(ircsock, arg):
@@ -101,23 +102,24 @@ class IRC:
 
         # get msg
         for msg in self.get_msg(ircsock):
-            print(">", msg)
-
             sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
 
             # if irc commands are not PRIVMSG handle them right away
             # and get next msg
             if irc_command != 'PRIVMSG':
                 if irc_command == 'PING':
-                    IRC.ping(ircsock, args)
+                    IRC.ping(ircsock, irc_args)
                 elif irc_command == 'KICK':
-                    IRC.kicked(ircsock, args)
+                    IRC.kicked(ircsock, irc_args)
+                elif irc_command == 'MODE':
+                    self.chan_join(ircsock)
 
                 continue
 
             # create command
             name, args = Parser.find_command(irc_args, self.prefix)
             command = self.command_manager.mkcom(name, args, sender, receiver) 
+            print(">>>", name, args)
             
             # if not command get next msg
             if not command: continue
@@ -127,28 +129,6 @@ class IRC:
             queue.put(command)
             # unlock answering process
             queue_event.set()
-
-
-            #try:
-            #    Parser.find_command(args)
-            #    command = self.command_manager.mkcom(command, args, sender, receiver)
-
-            #except NotPrivMsg:
-            #    # if commands are not PRIVMSG handle them right away
-            #    if command == 'PING':
-            #        IRC.ping(ircsock, args)
-
-            #    elif command == 'KICK':
-            #        IRC.kicked(ircsock, args)
-
-            #else:
-            #    # if not a command check next msg
-            #    if not command: continue
-
-            #    if queue.full(): queue_event.wait()
-            #    queue.put(command)
-            #    # unlock answering process
-            #    queue_event.set()
         
 
     def answering(self, ircsock, queue_event, queue):
