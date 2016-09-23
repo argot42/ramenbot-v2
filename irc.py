@@ -1,10 +1,11 @@
-import sys, socket, ssl, time
-from os.path import expanduser
+import sys, socket, ssl, time, os
 from multiprocessing import Process, Event, Queue
 
 from com_manager import Commanager
 from parser import Parser
 from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR
+
+import ircerror
 
 class IRC:
     def __init__(self, host, port, nick, channels, database, prefix, password, ssl):
@@ -18,7 +19,10 @@ class IRC:
         self.ssl = IRC.check_ssl(ssl)
 
         # load commands
+        print("Loading commands...")
         self.command_manager = Commanager(COMMANDS_DIR)
+        print(self.command_manager.commands)
+        print("...done!")
 
         # create database
         
@@ -32,10 +36,10 @@ class IRC:
                 ircsock.connect((self.host, self.port))
 
                 if self.ssl:
-                    print("ssl")
+                    # secure connection
+                    ircsock = ssl.wrap_socket(ircsock)
 
                 self.server_login(ircsock)
-                #self.chan_join(ircsock)
 
                 if MULTI:
                     # multiprocess ramenbot
@@ -43,10 +47,15 @@ class IRC:
                 else:
                     # single process ramenbot
                     self.start_single(ircsock)
+
+            except ConnectionRefusedError as e:
+                print(e, file=sys.stderr)
+                pass
+
             except:
                 raise
 
-            print("Retrying in {}s...".format(RETRY_DELAY * (retry_n + 1)))
+            print("Retrying in {}s...".format(RETRY_DELAY * (retry_n + 1), file=sys.stderr))
             time.sleep(RETRY_DELAY * (retry_n + 1))
 
 
@@ -55,10 +64,8 @@ class IRC:
 
         ircsock.send(bytes("NICK {}\r\n".format(self.nick), "UTF-8"))
         time.sleep(.5)
-
-        ircsock.send(bytes("USER {} {} {} :tangobot\r\n".format(self.nick, self.nick, self.nick), "UTF-8"))
+        ircsock.send(bytes("USER {} {} {} :ramenbot\r\n".format(self.nick, self.nick, self.nick), "UTF-8"))
         time.sleep(.5)
-
 
         if self.password:
             print("pass")
@@ -66,7 +73,6 @@ class IRC:
 
     def chan_join(self, ircsock):
         print("Joining Chans...")
-
         for chan in self.channels: ircsock.send(bytes("JOIN {}\r\n".format(chan), "UTF-8"))
 
 
@@ -100,52 +106,75 @@ class IRC:
     def listening(self, ircsock, queue_event, queue):
         """ Obtain msg, queue command """
 
-        # get msg
-        for msg in self.get_msg(ircsock):
-            sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
+        try:
+            # get msg
+            for msg in self.get_msg(ircsock):
+                if not msg: raise ircerror.IRCShutdown("Server closed connection")
 
-            # if irc commands are not PRIVMSG handle them right away
-            # and get next msg
-            if irc_command != 'PRIVMSG':
-                if irc_command == 'PING':
-                    IRC.ping(ircsock, irc_args)
-                elif irc_command == 'KICK':
-                    IRC.kicked(ircsock, irc_args)
-                elif irc_command == 'MODE':
-                    self.chan_join(ircsock)
+                ### test ###
+                #print(">>>{}<<<".format(msg.replace('\r', '')))
+                ############
+                sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
 
-                continue
+                # if irc commands are not PRIVMSG handle them right away
+                # and get next msg
+                if irc_command != 'PRIVMSG':
+                    if irc_command == 'PING':
+                        IRC.ping(ircsock, irc_args)
+                    elif irc_command == 'KICK':
+                        IRC.kicked(ircsock, irc_args)
+                    elif irc_command == 'MODE':
+                        self.chan_join(ircsock)
 
-            # create command
-            name, args = Parser.find_command(irc_args, self.prefix)
-            command = self.command_manager.mkcom(name, args, sender, receiver) 
-            print(">>>", name, args)
-            
-            # if not command get next msg
-            if not command: continue
+                    continue
 
-            # check if queue is full
-            if queue.full(): queue_event.wait() 
-            queue.put(command)
-            # unlock answering process
-            queue_event.set()
+                # create command
+                name, args = Parser.find_command(irc_args, self.prefix)
+                command = self.command_manager.mkcom(name, args, sender, receiver) 
+                
+                # if not command get next msg
+                if not command: continue
+
+                # check if queue is full
+                if queue.full(): queue_event.wait() 
+                queue.put(command)
+                # unlock answering process
+                queue_event.set()
         
+        except ircerror.IRCShutdown as e:
+            print(e.description, file=sys.stderr)
+
+        finally:
+            print("Closing listening process")
+            if queue.full(): queue_event.wait()
+            queue.put(None)
+            queue_event.set()
+
 
     def answering(self, ircsock, queue_event, queue):
         """ Get command, execute it, and send back the output """
 
-        # if queue empty wait for producer to add commands
-        if queue.empty(): queue_event.wait()
+        try:
+            while True:
+                # if queue empty wait for producer to add commands
+                if queue.empty(): queue_event.wait()
 
-        # get command from queue
-        command = queue.get()
+                # get command from queue
+                command = queue.get()
 
-        # execute command
-        self.send(command.execute())
+                # if command is none, then listening process closed
+                # and we need to close this process as well
+                if command == None: break;
 
-        # unlock listening process if locked (can happen if queue is full)
-        queue_event.set()
-            
+                # execute command
+                self.send(ircsock, command)
+
+                # unlock listening process if locked (can happen if queue is full)
+                queue_event.set()
+
+        finally:
+            print("Closing answering process")
+        
 
     ############################################################################################
     ############################################################################################
@@ -162,8 +191,12 @@ class IRC:
         line_buffer = str()
 
         while True:
+            readbuffer = ircsock.recv(1024).decode("UTF-8")
+            # if buffer is '', then connection was close
+            if not readbuffer: yield readbuffer
+
+            # this fixes msg if it gets truncated
             try:
-                readbuffer = ircsock.recv(1024).decode('utf-8')
                 head, *mid, tail = readbuffer.split('\n') 
 
                 yield line_buffer + head
@@ -178,6 +211,16 @@ class IRC:
             except ValueError:
                 line_buffer = line_buffer + readbuffer
                            
+
+    def send(self, ircsock, command):
+        try:
+            answer = command.execute()
+            ircsock.send(bytes("PRIVMSG {}\n\r".format(answer), "UTF-8"))
+        
+        except:
+            raise
+         
+
             
     ############################################################################################
     ############################################################################################

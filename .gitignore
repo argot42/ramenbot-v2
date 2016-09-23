@@ -91,5 +91,5 @@ ENV/
 # VIM
 *.swp
 
-# symlink
-com
+# docs
+docs/

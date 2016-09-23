@@ -7,5 +7,5 @@ class Command:
         self.receiver = receiver        # who got the msg (usr or chan)
 
 
-    def exec(self):
+    def execute(self):
         return self.function(self.args) 

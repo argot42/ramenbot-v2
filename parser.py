@@ -3,6 +3,7 @@ class Parser:
         """ substring approach for parsing irc msg """
 
         if not msg: raise RuntimeError
+        msg = msg.replace('\r', '')
 
         if msg[0] != ':': 
             command, arguments = msg.split(':')
