@@ -3,17 +3,19 @@ from multiprocessing import Process, Event, Queue
 
 from com_manager import Commanager
 from parser import Parser
-from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR
+from database_manager import DBM
+from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR, SCHEMA
 
 import ircerror
 
 class IRC:
+    """ Class that do most of the irc work """
+
     def __init__(self, host, port, nick, channels, database, prefix, password, ssl):
         self.host = IRC.check_host(host)
         self.port = IRC.check_port(port)
         self.nick = IRC.check_nick(nick)
         self.channels = IRC.check_channels(channels)
-        self.database = IRC.check_database(database)
         self.prefix = IRC.check_prefix(prefix)
         self.password = IRC.check_password(password)
         self.ssl = IRC.check_ssl(ssl)
@@ -25,7 +27,12 @@ class IRC:
         print("...done!")
 
         # create database
-        
+        try:
+            print(database)
+            self.database = DBM(database, SCHEMA)
+        except:
+            raise
+
 
     def connect(self):
         """ Main connection structure. Socket generation and check on connection status """
@@ -111,9 +118,7 @@ class IRC:
             for msg in self.get_msg(ircsock):
                 if not msg: raise ircerror.IRCShutdown("Server closed connection")
 
-                ### test ###
-                #print(">>>{}<<<".format(msg.replace('\r', '')))
-                ############
+                # parsing irc msg
                 sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
 
                 # if irc commands are not PRIVMSG handle them right away
@@ -128,7 +133,14 @@ class IRC:
 
                     continue
 
-                # create command
+                # triggering commands 
+                queue.put(self.command_manager.mkcom("checkon", sender, sender, receiver))  
+
+                ####################
+                # command handling #
+                ####################
+
+                # find and create command
                 name, args = Parser.find_command(irc_args, self.prefix)
                 command = self.command_manager.mkcom(name, args, sender, receiver) 
                 

@@ -1,6 +1,6 @@
 import sys
 import json
-from os.path import expanduser
+import os.path
 
 from irc import IRC
 
@@ -12,7 +12,7 @@ if len(sys.argv) >= 2:
 
 # get config from json file
 try:
-    fd = open(expanduser(cfg_path), 'r')
+    fd = open(os.path.expanduser(cfg_path), 'r')
     config = json.load(fd)
 
 except FileNotFoundError as err:
@@ -26,7 +26,7 @@ except json.decoder.JSONDecodeError:
 
 # try to connect to server
 try:
-    irc = IRC(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=config['db'], 
+    irc = IRC(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=os.path.expanduser(config['db']), 
             ssl=config['ssl'], prefix=config['prefix'], password=config['password'])
     irc.connect()
 
