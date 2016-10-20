@@ -20,9 +20,9 @@ class Commanager:
                             match.group("name"), self.path + '/' + f).load_module(), match.group("name"))
 
 
-    def mkcom(self, name, args, sender, receiver):
+    def mkcom(self, name, args, sender, receiver, db):
         try:
-            return Command(name, self.commands[name], args, sender, receiver)
+            return Command(name, self.commands[name], args, sender, receiver, db)
 
         except KeyError:
             return None

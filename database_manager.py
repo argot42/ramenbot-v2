@@ -3,22 +3,24 @@ import sqlite3
 class DBM:
     """ Interface to interact with the database """
 
-    def __init__(self, database, schema):
+    def __init__(self, db, schema):
         with open(schema, 'r') as fp:
-            self.connection = sqlite3.connect(database)
+            self.database = db
 
             try:
-                self.connection.executescript(fp.read())
+                connection = sqlite3.connect(self.database)
+                connection.executescript(fp.read())
             except sqlite3.OperationalError:
                 pass
 
+    def query(self, query, args):
+        connection = sqlite3.connect(self.database)
+        return (connection.execute(query, args)).fetchall()
 
-    def query(self, query):
-        return (self.connection.execute(query)).fetchall()
 
-
-    def query_iter(self, query):
-        cursor = self.connection.execute(query)
+    def query_iter(self, query, args):
+        connection = sqlite3.connect(self.database)
+        cursor = connection.execute(query, args)
 
         while True:
             response = cursor.fetchone()

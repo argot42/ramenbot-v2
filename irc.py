@@ -28,7 +28,6 @@ class IRC:
 
         # create database
         try:
-            print(database)
             self.database = DBM(database, SCHEMA)
         except:
             raise
@@ -133,8 +132,8 @@ class IRC:
 
                     continue
 
-                # triggering commands 
-                queue.put(self.command_manager.mkcom("checkon", sender, sender, receiver))  
+                # triggers
+                self.super_queue(queue, self.command_manager.mkcom("checkon", None, sender, receiver, self.database))
 
                 ####################
                 # command handling #
@@ -142,17 +141,13 @@ class IRC:
 
                 # find and create command
                 name, args = Parser.find_command(irc_args, self.prefix)
-                command = self.command_manager.mkcom(name, args, sender, receiver) 
+                command = self.command_manager.mkcom(name, args, sender, receiver, self.database) 
                 
                 # if not command get next msg
                 if not command: continue
-
-                # check if queue is full
-                if queue.full(): queue_event.wait() 
-                queue.put(command)
-                # unlock answering process
-                queue_event.set()
+                self.super_queue(queue, command)
         
+
         except ircerror.IRCShutdown as e:
             print(e.description, file=sys.stderr)
 
@@ -233,7 +228,17 @@ class IRC:
             raise
          
 
-            
+    def super_queue(self, queue, data):
+        # wait if queue is full
+        if queue.full(): queue_event.wait() 
+
+        # put data in queue
+        queue.put(data)
+
+        # unlock answering process
+        queue_event.set()
+
+
     ############################################################################################
     ############################################################################################
 
