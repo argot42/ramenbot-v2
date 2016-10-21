@@ -3,6 +3,7 @@ import os
 import importlib.machinery
 
 from command import Command
+import commanderror
 
 class Commanager:
     def __init__(self, path):
@@ -25,4 +26,7 @@ class Commanager:
             return Command(name, self.commands[name], args, sender, receiver, db)
 
         except KeyError:
-            return None
+            raise commanderror.NoCommandFound("No command with the given name: {}".format(name)) 
+
+        except:
+            raise commanderror.CommandException("The command raised an exception")

@@ -7,6 +7,7 @@ from database_manager import DBM
 from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR, SCHEMA
 
 import ircerror
+import commanderror
 
 class IRC:
     """ Class that do most of the irc work """
@@ -133,7 +134,16 @@ class IRC:
                     continue
 
                 # triggers
-                self.super_queue(queue, self.command_manager.mkcom("checkon", None, sender, receiver, self.database))
+                try:
+                    self.super_queue(queue, self.command_manager.mkcom("checkon", None, sender, receiver, self.database))
+
+                except commanderror.NoCommandFound as e:
+                    print("Trigger not working: {}".format(e.description), file=sys.stderr)
+                    pass
+
+                except commanderror.CommandExecption as e:
+                    print("Trigger not working: {}".format(e.description), file=sys.stderr)
+                    pass
 
                 ####################
                 # command handling #
@@ -141,13 +151,17 @@ class IRC:
 
                 # find and create command
                 name, args = Parser.find_command(irc_args, self.prefix)
-                command = self.command_manager.mkcom(name, args, sender, receiver, self.database) 
-                
-                # if not command get next msg
-                if not command: continue
-                self.super_queue(queue, command)
-        
 
+                try:
+                    self.super_queue(queue, self.command_manager.mkcom(name, args, sender, receiver, self.database))
+
+                except commanderror.NoCommandFound:
+                    pass
+
+                except commanderror.CommandExecption:
+                    print("The command is not working properly", file=sys.stderr)
+                    pass
+                
         except ircerror.IRCShutdown as e:
             print(e.description, file=sys.stderr)
 
