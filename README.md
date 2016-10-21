@@ -2,7 +2,7 @@
 ramenbot - Love-filled, handcrafted, bad-coded, python irc bot ❤
 
 ##TODO
-~~1. Retry when connection fails~~
+1. ~~Retry when connection fails~~
 
 2. Trigger commands by a msg or time
 
