@@ -35,9 +35,7 @@ except KeyError:
     sys.exit(1)
 
 except KeyboardInterrupt:
-    # terminar conexion con db y servidor!!
-    print("Goodbye ;-)")
-    sys.exit(0)
+    pass
 
-except:
-    raise
+finally:
+    print("goodbye ❤")

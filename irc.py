@@ -97,7 +97,7 @@ class IRC:
 
     def start_multi(self, ircsock):
         """ Start main bot function [obtain msg, store command] / [execute command, send output back] that supports multiprocess """      
-        
+
         msg_queue = Queue()
         queue_event = Event()
 
@@ -135,13 +135,13 @@ class IRC:
 
                 # triggers
                 try:
-                    self.super_queue(queue, self.command_manager.mkcom("checkon", None, sender, receiver, self.database))
+                    self.super_queue(queue, queue_event, self.command_manager.mkcom("checkon", None, sender, receiver, self.database))
 
                 except commanderror.NoCommandFound as e:
                     print("Trigger not working: {}".format(e.description), file=sys.stderr)
                     pass
 
-                except commanderror.CommandExecption as e:
+                except commanderror.CommandException as e:
                     print("Trigger not working: {}".format(e.description), file=sys.stderr)
                     pass
 
@@ -153,17 +153,21 @@ class IRC:
                 name, args = Parser.find_command(irc_args, self.prefix)
 
                 try:
-                    self.super_queue(queue, self.command_manager.mkcom(name, args, sender, receiver, self.database))
+                    self.super_queue(queue, queue_event, self.command_manager.mkcom(name, args, sender, receiver, self.database))
 
                 except commanderror.NoCommandFound:
+                    print("command not found dog")
                     pass
 
-                except commanderror.CommandExecption:
+                except commanderror.CommandException:
                     print("The command is not working properly", file=sys.stderr)
                     pass
                 
         except ircerror.IRCShutdown as e:
             print(e.description, file=sys.stderr)
+
+        except KeyboardInterrupt:
+            pass
 
         finally:
             print("Closing listening process")
@@ -192,6 +196,9 @@ class IRC:
 
                 # unlock listening process if locked (can happen if queue is full)
                 queue_event.set()
+
+        except KeyboardInterrupt:
+            pass
 
         finally:
             print("Closing answering process")
@@ -242,7 +249,7 @@ class IRC:
             raise
          
 
-    def super_queue(self, queue, data):
+    def super_queue(self, queue, queue_event, data):
         # wait if queue is full
         if queue.full(): queue_event.wait() 
 

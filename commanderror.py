@@ -4,7 +4,7 @@ class Err(Exception):
 
 
 class ComErr(Err):
-    """ No command loaded with given name """
+    """ Commands error class """
 
     def __init__(self, description):
         self.description = description
