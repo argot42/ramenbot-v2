@@ -59,9 +59,6 @@ class IRC:
                 print(e, file=sys.stderr)
                 pass
 
-            except:
-                raise
-
             print("Retrying in {}s...".format(RETRY_DELAY * (retry_n + 1), file=sys.stderr))
             time.sleep(RETRY_DELAY * (retry_n + 1))
 
@@ -117,6 +114,7 @@ class IRC:
             # get msg
             for msg in self.get_msg(ircsock):
                 if not msg: raise ircerror.IRCShutdown("Server closed connection")
+                #print(msg)
 
                 # parsing irc msg
                 sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
@@ -141,9 +139,9 @@ class IRC:
                     print("Trigger not working: {}".format(e.description), file=sys.stderr)
                     pass
 
-                except commanderror.CommandException as e:
-                    print("Trigger not working: {}".format(e.description), file=sys.stderr)
-                    pass
+                #except commanderror.CommandException as e:
+                #    print("Trigger not working: {}".format(e.description), file=sys.stderr)
+                #    pass
 
                 ####################
                 # command handling #
@@ -159,9 +157,9 @@ class IRC:
                     print("command not found dog")
                     pass
 
-                except commanderror.CommandException:
-                    print("The command is not working properly", file=sys.stderr)
-                    pass
+                #except commanderror.CommandException:
+                #    print("The command is not working properly", file=sys.stderr)
+                #    pass
                 
         except ircerror.IRCShutdown as e:
             print(e.description, file=sys.stderr)
@@ -191,11 +189,15 @@ class IRC:
                 # and we need to close this process as well
                 if command == None: break;
 
-                # execute command
-                self.send(ircsock, command)
+                try:
+                    # execute command
+                    self.send(ircsock, command)
 
-                # unlock listening process if locked (can happen if queue is full)
-                queue_event.set()
+                    # unlock listening process if locked (can happen if queue is full)
+                    queue_event.set()
+                except commanderror.CommandException:
+                    print("A command is not working properly, debug it!", file=sys.stderr)
+
 
         except KeyboardInterrupt:
             pass
@@ -243,12 +245,11 @@ class IRC:
     def send(self, ircsock, command):
         try:
             answer = command.execute()
-            ircsock.send(bytes("PRIVMSG {}\n\r".format(answer), "UTF-8"))
+            for msg in answer: ircsock.send(bytes("PRIVMSG {}\n\r".format(msg), "UTF-8"))
         
-        except:
-            raise
-         
-
+        except TypeError:
+            pass
+            
     def super_queue(self, queue, queue_event, data):
         # wait if queue is full
         if queue.full(): queue_event.wait() 

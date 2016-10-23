@@ -1,3 +1,5 @@
+import commanderror
+
 class Command:
     def __init__(self, name, function, args, sender, receiver, db):
         self.name = name
@@ -9,4 +11,7 @@ class Command:
 
 
     def execute(self):
-        return self.function({"arguments": self.args, "sender": self.sender, "receiver": self.receiver, "database": self.database}) 
+        try:
+            return self.function({"arguments": self.args, "sender": self.sender, "receiver": self.receiver, "database": self.database}) 
+        except:
+            raise #commanderror.CommandException("Something happened :^)")

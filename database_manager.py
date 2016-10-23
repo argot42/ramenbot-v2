@@ -7,18 +7,27 @@ class DBM:
         with open(schema, 'r') as fp:
             self.database = db
 
+            connection = sqlite3.connect(self.database)
             try:
-                connection = sqlite3.connect(self.database)
                 connection.executescript(fp.read())
             except sqlite3.OperationalError:
                 pass
 
-    def query(self, query, args):
+    def query(self, query, args=tuple()):
         connection = sqlite3.connect(self.database)
-        return (connection.execute(query, args)).fetchall()
+
+        try:
+            response = (connection.execute(query, args)).fetchall()
+        except:
+            raise
+
+        connection.commit()
+        connection.close()
+        return response
 
 
-    def query_iter(self, query, args):
+
+    def query_iter(self, query, args=tuple()):
         connection = sqlite3.connect(self.database)
         cursor = connection.execute(query, args)
 
@@ -26,4 +35,6 @@ class DBM:
             response = cursor.fetchone()
             if not response: break
             yield response
+
+        connection.close()
 
