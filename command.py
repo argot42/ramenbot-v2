@@ -14,4 +14,4 @@ class Command:
         try:
             return self.function({"arguments": self.args, "sender": self.sender, "receiver": self.receiver, "database": self.database}) 
         except:
-            raise #commanderror.CommandException("Something happened :^)")
+            raise commanderror.CommandException("Something happened :^)")

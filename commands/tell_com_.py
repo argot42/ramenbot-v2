@@ -1,12 +1,15 @@
 def tell(info):
+    # check if msg was sent as a private or chan msg
+    if info["receiver"][0] != "#": 
+        receiver = info["sender"]
+        priv = 1
+    else: 
+        receiver = info["receiver"]
+        priv = 0
+
     try:
-        # check if msg was sent as a private or chan msg
-        if info["receiver"][0] != "#": 
-            receiver = info["sender"]
-            priv = 1
-        else: 
-            receiver = info["receiver"]
-            priv = 0
+        # raise exception if no usr provided as argument
+        if not info["arguments"]: raise RuntimeError("No username provided to deliver msg")
 
         # insert msg into db
         info["database"].query("INSERT INTO msg(sender, receiver, body, priv) VALUES(?, ?, ?, ?)",\
@@ -20,3 +23,7 @@ def tell(info):
 
     except IndexError:
         return ("{} :Baka, that's not the command's syntax".format(receiver),)
+
+    except RuntimeError:
+        return ("{} :Baka, that's not the command's syntax".format(receiver),)
+

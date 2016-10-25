@@ -28,5 +28,5 @@ class Commanager:
         except KeyError:
             raise commanderror.NoCommandFound("No command with the given name: {}".format(name)) 
 
-#        except:
-#            raise commanderror.CommandException("The command raised an exception")
+        except:
+            raise commanderror.CommandException("The command raised an exception")
