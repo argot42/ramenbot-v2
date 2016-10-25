@@ -8,6 +8,6 @@ ramenbot - Love-filled, handcrafted, bad-coded, python irc bot ❤
 
 3. Check if server is reachable (if not try to reconnect)
 
-4. Another way to load commands that allows different langs
+4. Another way to load commands that allow different langs
 
 5. ???

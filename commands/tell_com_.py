@@ -1,18 +1,22 @@
 def tell(info):
     try:
         # check if msg was sent as a private or chan msg
-        priv = 0
-        receiver = info["receiver"]
-        if info["arguments"][0][0] != '#':
+        if info["receiver"][0] != "#": 
+            receiver = info["sender"]
             priv = 1
-            receiver = info["arguments"][0]
+        else: 
+            receiver = info["receiver"]
+            priv = 0
 
         # insert msg into db
-        res = info["database"].query("INSERT INTO msg(body, sender_id, receiver_id, priv) VALUES(?, ?, ?, ?)",\
-                (" ".join(info["arguments"][1:]),\
-                info["sender"],\
-                receiver,\
-                priv)) 
+        info["database"].query("INSERT INTO msg(sender, receiver, body, priv) VALUES(?, ?, ?, ?)",\
+                (info["sender"],\
+                info["arguments"][0],\
+                " ".join(info["arguments"][1:]),\
+                priv))
+
+        return ("{} :The msg will be delivered :3".format(receiver),)
+
 
     except IndexError:
-        return ("{} :Baka, that's not the command's syntax".format(info["receiver"]),)
+        return ("{} :Baka, that's not the command's syntax".format(receiver),)

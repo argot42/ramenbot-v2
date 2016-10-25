@@ -1,3 +1,3 @@
 PRAGMA foreign_keys=ON;
 CREATE TABLE user(nickname TEXT PRIMARY KEY NOT NULL, lastseen REAL, cozy INTEGER NOT NULL, autism INTEGER NOT NULL);
-CREATE TABLE msg(id_msg INTEGER PRIMARY KEY NOT NULL, body TEXT, sender_id INTEGER NOT NULL, receiver_id INTEGER NOT NULL, priv INTEGER NOT NULL, FOREIGN KEY(sender_id) REFERENCES user(nickname));
+CREATE TABLE msg(msg_id INTEGER PRIMARY KEY NOT NULL, body TEXT NOT NULL, sender TEXT NOT NULL, receiver TEXT NOT NULL, priv INTEGER NOT NULL, FOREIGN KEY (sender) REFERENCES user(nickname), FOREIGN KEY(receiver) REFERENCES user(nickname));
