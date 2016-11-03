@@ -14,12 +14,21 @@ ramenbot - Love-filled, handcrafted, bad-coded, python irc bot ❤
 
 ###config.json
 {
+
 	"host" : "chat.freenode.net",
+
 	"port" : 6697,
+
 	"nick" : "ramenbot",
+
 	"channels" : ["#sushigirl"],
+
 	"prefix" : ".",
+
 	"password" : false,
+
 	"ssl" : true,
+
 	"db" : "~/.ramenbot/ramen.db"
+
 }
