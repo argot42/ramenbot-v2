@@ -1,4 +1,4 @@
-import sys, socket, ssl, time, os
+import sys, socket, ssl, time, os, select
 from threading import Thread, Event, Lock
 from queue import Queue
 
@@ -111,6 +111,7 @@ class IRC:
             consumer.join()
         except KeyboardInterrupt:
             exit_event.clear()
+            raise
 
 
     def listening(self, ircsock, exit_event, queue_event, queue):
@@ -118,10 +119,8 @@ class IRC:
 
         try:
             # get msg
-            for msg in self.get_msg(ircsock):
+            for msg in self.get_msg(ircsock, exit_event):
                 if not msg: raise ircerror.IRCShutdown("Server closed connection")
-                print(exit_event.is_set())
-                if not exit_event.is_set(): break
 
                 # parsing irc msg
                 sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
@@ -224,10 +223,18 @@ class IRC:
         return True
 
     
-    def get_msg(self, ircsock):
+    def get_msg(self, ircsock, exit_event):
         line_buffer = str()
 
         while True:
+            # check if exit event is set and exit iterator if false
+            if not exit_event.is_set(): return
+
+            # check if socket ready to read
+            ready_to_read, _, __, = select.select([ircsock], [], [], 0.1)
+            # if not ready check again
+            if not ready_to_read: continue
+
             readbuffer = ircsock.recv(1024).decode("UTF-8")
             # if buffer is '', then connection was close
             if not readbuffer: yield readbuffer
