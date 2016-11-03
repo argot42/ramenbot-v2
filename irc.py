@@ -1,5 +1,6 @@
 import sys, socket, ssl, time, os
-from multiprocessing import Process, Event, Queue
+from threading import Thread, Event, Lock
+from queue import Queue
 
 from com_manager import Commanager
 from parser import Parser
@@ -96,25 +97,31 @@ class IRC:
         """ Start main bot function [obtain msg, store command] / [execute command, send output back] that supports multiprocess """      
 
         msg_queue = Queue()
+        exit_event = Event()
+        exit_event.set()
         queue_event = Event()
 
-        producer = Process(target=self.listening, args=(ircsock, queue_event, msg_queue,))
-        consumer = Process(target=self.answering, args=(ircsock, queue_event, msg_queue,))
+        producer = Thread(target=self.listening, args=(ircsock, exit_event, queue_event, msg_queue,))
+        consumer = Thread(target=self.answering, args=(ircsock, queue_event, msg_queue,))
 
-        producer.start()
-        consumer.start()
-        producer.join()
-        consumer.join()
+        try:
+            producer.start()
+            consumer.start()
+            producer.join()
+            consumer.join()
+        except KeyboardInterrupt:
+            exit_event.clear()
 
 
-    def listening(self, ircsock, queue_event, queue):
+    def listening(self, ircsock, exit_event, queue_event, queue):
         """ Obtain msg, queue command """
 
         try:
             # get msg
             for msg in self.get_msg(ircsock):
                 if not msg: raise ircerror.IRCShutdown("Server closed connection")
-                #print(msg)
+                print(exit_event.is_set())
+                if not exit_event.is_set(): break
 
                 # parsing irc msg
                 sender, receiver, irc_command, irc_args = Parser.parse_msg(msg)
@@ -250,15 +257,15 @@ class IRC:
         except TypeError:
             pass
             
-    def super_queue(self, queue, queue_event, data):
+    def super_queue(self, queue, event, data):
         # wait if queue is full
-        if queue.full(): queue_event.wait() 
+        if queue.full(): event.wait() 
 
         # put data in queue
         queue.put(data)
 
         # unlock answering process
-        queue_event.set()
+        event.set()
 
 
     ############################################################################################

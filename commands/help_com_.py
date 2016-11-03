@@ -4,7 +4,7 @@ def help(info):
     
     if not info["arguments"]:
         response = ("{} :\x1FList of Commands:".format(receiver),\
-            "{} :help | tell | src".format(receiver))
+            "{} :help | tell | info".format(receiver))
 
     elif info["arguments"][0] == "help":
         response = ("{} :help <command>".format(receiver),)
@@ -12,7 +12,7 @@ def help(info):
     elif info["arguments"][0] == "tell":
         response = ("{} :tell <user> <msg>".format(receiver),)
 
-    elif info["arguments"][0] == "src":
-        response = ("{} :src".format(receiver),)
+    elif info["arguments"][0] == "info":
+        response = ("{} :Shows ramenbot's repo".format(receiver),)
 
     return response
