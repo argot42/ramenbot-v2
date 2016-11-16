@@ -160,7 +160,6 @@ class IRC:
                     self.super_queue(queue, queue_event, self.command_manager.mkcom(name, args, sender, receiver, self.database))
 
                 except commanderror.NoCommandFound:
-                    print("command not found dog")
                     pass
 
                 #except commanderror.CommandException:
