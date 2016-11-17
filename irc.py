@@ -1,11 +1,11 @@
-import sys, socket, ssl, time, os, select
+import sys, socket, ssl, time, os, select, datetime
 from threading import Thread, Event, Lock
 from queue import Queue
 
 from com_manager import Commanager
 from parser import Parser
 from database_manager import DBM
-from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR, SCHEMA
+from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR, SCHEMA, TIMEOUT, GOODBYE
 
 import ircerror
 import commanderror
@@ -33,6 +33,9 @@ class IRC:
             self.database = DBM(database, SCHEMA)
         except:
             raise
+
+        # time events
+        self.time_event = {"ping": [0.0, TIMEOUT]}
 
 
     def connect(self):
@@ -82,7 +85,7 @@ class IRC:
 
 
     def ping(ircsock, arg):
-        print("Pong!")
+        print("Pong! [{}]".format(datetime.datetime.now()))
         ircsock.send(bytes("PONG :{}\r\n".format(arg), "UTF-8")) 
 
 
@@ -101,8 +104,11 @@ class IRC:
         exit_event.set()
         queue_event = Event()
 
+        #timer_queue = Queue()
+
         producer = Thread(target=self.listening, args=(ircsock, exit_event, queue_event, msg_queue,))
-        consumer = Thread(target=self.answering, args=(ircsock, queue_event, msg_queue,))
+        consumer = Thread(target=self.answering, args=(ircsock, queue_event, msg_queue,)) #timer_queue))
+        #timer = Thread(target=self.timer, args=(msg_queue, timer_queue,))
 
         try:
             producer.start()
@@ -209,6 +215,9 @@ class IRC:
 
         finally:
             print("Closing answering process")
+            ircsock.send(bytes("QUIT {}\n\r".format(GOODBYE), "UTF-8"))
+            ircsock.shutdown(socket.SHUT_RDWR)
+            ircsock.close()
         
 
     ############################################################################################
