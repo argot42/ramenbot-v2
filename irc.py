@@ -35,7 +35,7 @@ class IRC:
             raise
 
         # time events
-        self.time_event = {"ping": [0.0, TIMEOUT]}
+        self.time_event = {"ping": [[True, 0.0, TIMEOUT, self.command_manager.mkcom("test", [], "ramenbot", "#test", self.database)]]}
 
 
     def connect(self):
@@ -88,7 +88,6 @@ class IRC:
         print("Pong! [{}]".format(datetime.datetime.now()))
         ircsock.send(bytes("PONG :{}\r\n".format(arg), "UTF-8")) 
 
-
     def kicked(ircsock, arg):
         print("Kicked!")
 
@@ -100,27 +99,30 @@ class IRC:
         """ Start main bot function [obtain msg, store command] / [execute command, send output back] that supports multiprocess """      
 
         msg_queue = Queue()
+        msg_queue_event = Event()
+        timer_queue = Queue()
+        timer_queue_event = Event()
+
         exit_event = Event()
         exit_event.set()
-        queue_event = Event()
 
-        #timer_queue = Queue()
-
-        producer = Thread(target=self.listening, args=(ircsock, exit_event, queue_event, msg_queue,))
-        consumer = Thread(target=self.answering, args=(ircsock, queue_event, msg_queue,)) #timer_queue))
-        #timer = Thread(target=self.timer, args=(msg_queue, timer_queue,))
+        producer = Thread(target=self.listening, args=(ircsock, exit_event, msg_queue_event, msg_queue,))
+        consumer = Thread(target=self.answering, args=(ircsock, msg_queue_event, msg_queue, timer_queue, timer_queue_event))
+        timer = Thread(target=self.timer, args=(msg_queue, msg_queue_event, timer_queue, timer_queue_event))
 
         try:
             producer.start()
             consumer.start()
+            timer.start()
             producer.join()
             consumer.join()
+            timer.join()
         except KeyboardInterrupt:
             exit_event.clear()
             raise
 
 
-    def listening(self, ircsock, exit_event, queue_event, queue):
+    def listening(self, ircsock, exit_event, msg_queue_event, msg_queue):
         """ Obtain msg, queue command """
 
         try:
@@ -136,6 +138,7 @@ class IRC:
                 if irc_command != 'PRIVMSG':
                     if irc_command == 'PING':
                         IRC.ping(ircsock, irc_args)
+                        self.super_queue(msg_queue, self.command_manager.mkcom("ping", [], "ramenbot", "#test", self.database), msg_queue_event)
                     elif irc_command == 'KICK':
                         IRC.kicked(ircsock, irc_args)
                     elif irc_command == 'MODE':
@@ -145,7 +148,7 @@ class IRC:
 
                 # triggers
                 try:
-                    self.super_queue(queue, queue_event, self.command_manager.mkcom("checkon", None, sender, receiver, self.database))
+                    self.super_queue(msg_queue, self.command_manager.mkcom("checkon", None, sender, receiver, self.database), msg_queue_event)
 
                 except commanderror.NoCommandFound as e:
                     print("Trigger not working: {}".format(e.description), file=sys.stderr)
@@ -163,7 +166,7 @@ class IRC:
                 name, args = Parser.find_command(irc_args, self.prefix)
 
                 try:
-                    self.super_queue(queue, queue_event, self.command_manager.mkcom(name, args, sender, receiver, self.database))
+                    self.super_queue(msg_queue, self.command_manager.mkcom(name, args, sender, receiver, self.database), msg_queue_event)
 
                 except commanderror.NoCommandFound:
                     pass
@@ -180,32 +183,30 @@ class IRC:
 
         finally:
             print("Closing listening process")
-            if queue.full(): queue_event.wait()
-            queue.put(None)
-            queue_event.set()
+            if msg_queue.full(): msg_queue_event.wait()
+            msg_queue.put(None)
+            msg_queue_event.set()
 
 
-    def answering(self, ircsock, queue_event, queue):
+    def answering(self, ircsock, msg_queue_event, msg_queue, timer_queue, timer_queue_event):
         """ Get command, execute it, and send back the output """
 
         try:
             while True:
                 # if queue empty wait for producer to add commands
-                if queue.empty(): queue_event.wait()
+                if msg_queue.empty(): msg_queue_event.wait()
 
                 # get command from queue
-                command = queue.get()
+                command = msg_queue.get()
 
                 # if command is none, then listening process closed
                 # and we need to close this process as well
                 if command == None: break;
 
                 try:
-                    # execute command
-                    self.send(ircsock, command)
+                    # execute command and send command/event
+                    self.send(command.execute(), ircsock, timer_queue, timer_queue_event)
 
-                    # unlock listening process if locked (can happen if queue is full)
-                    queue_event.set()
                 except commanderror.CommandException:
                     print("A command is not working properly, debug it!", file=sys.stderr)
 
@@ -214,11 +215,34 @@ class IRC:
             pass
 
         finally:
+            timer_queue.put(None)
+            timer_queue_event.set()
             print("Closing answering process")
             ircsock.send(bytes("QUIT {}\n\r".format(GOODBYE), "UTF-8"))
             ircsock.shutdown(socket.SHUT_RDWR)
             ircsock.close()
         
+
+    def timer(self, msg_queue, msg_queue_event, timer_queue, timer_queue_event):
+        """ Checks time and trigger events """
+        
+        last_time = time.monotonic()
+        while True:
+    #        time.sleep(.5)
+    #        if timer_queue.empty(): continue
+    #        event = timer_queue.get()
+    #        if not event: break
+    #        print(event)
+            now = time.monotonic()
+            
+            if timer_queue.empty(): continue
+
+            event = timer_queue.get()
+            if not event: break
+
+
+
+
 
     ############################################################################################
     ############################################################################################
@@ -250,7 +274,6 @@ class IRC:
             # this fixes msg if it gets truncated
             try:
                 head, *mid, tail = readbuffer.split('\n') 
-
                 yield line_buffer + head
 
                 line_buffer = str()
@@ -264,23 +287,28 @@ class IRC:
                 line_buffer = line_buffer + readbuffer
                            
 
-    def send(self, ircsock, command):
+    def send(self, answer, ircsock, timer_queue=None, timer_queue_event=None):
         try:
-            answer = command.execute()
-            for msg in answer: ircsock.send(bytes("PRIVMSG {}\n\r".format(msg), "UTF-8"))
+            #for msg in answer: ircsock.send(bytes("PRIVMSG {}\n\r".format(msg), "UTF-8"))
+            for msg in answer:
+                try:
+                    ircsock.send(bytes("PRIVMSG {}\n\r".format(msg["msg"]), "UTF-8"))
+                except KeyError:
+                    self.super_queue(timer_queue, msg["event"])
         
-        except TypeError:
+        except TypeError as err:
+            print(err, file=stderr)
             pass
             
-    def super_queue(self, queue, event, data):
+    def super_queue(self, queue, data, event=None):
         # wait if queue is full
-        if queue.full(): event.wait() 
+        if queue.full() and event: event.wait() 
 
         # put data in queue
         queue.put(data)
 
         # unlock answering process
-        event.set()
+        if event: event.set()
 
 
     ############################################################################################

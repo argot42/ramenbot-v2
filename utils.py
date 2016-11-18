@@ -6,4 +6,4 @@ MULTI = True                        # boolean
 COMMANDS_DIR = "commands"           # string
 SCHEMA = "schema.sql"               # string
 TIMEOUT = 256.0                     # float
-GOODBYE = "bye shushis :3"
+GOODBYE = "bye sushis :3"

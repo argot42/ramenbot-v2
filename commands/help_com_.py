@@ -3,16 +3,16 @@ def help(info):
     else: receiver = info["receiver"]
     
     if not info["arguments"]:
-        response = ("{} :\x1FList of Commands:".format(receiver),\
-            "{} :help | tell | info".format(receiver))
+        response = ({"msg": "{} :\x1FList of Commands:".format(receiver)},\
+            {"msg": "{} :help | tell | info".format(receiver)})
 
     elif info["arguments"][0] == "help":
-        response = ("{} :help <command>".format(receiver),)
+        response = ({"msg": "{} :help <command>".format(receiver)},)
 
     elif info["arguments"][0] == "tell":
-        response = ("{} :tell <user> <msg>".format(receiver),)
+        response = ({"msg": "{} :tell <user> <msg>".format(receiver)},)
 
     elif info["arguments"][0] == "info":
-        response = ("{} :Shows ramenbot's repo".format(receiver),)
+        response = ({"msg": "{} :Shows ramenbot's repo".format(receiver)},)
 
     return response

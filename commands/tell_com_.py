@@ -18,12 +18,12 @@ def tell(info):
                 " ".join(info["arguments"][1:]),\
                 priv))
 
-        return ("{} :The msg will be delivered :3".format(receiver),)
+        return ({"msg": "{} :The msg will be delivered :3".format(receiver)},)
 
 
     except IndexError:
-        return ("{} :Baka, that's not the command's syntax".format(receiver),)
+        return ({"msg": "{} :Baka, that's not the command's syntax".format(receiver)},)
 
     except RuntimeError:
-        return ("{} :Baka, that's not the command's syntax".format(receiver),)
+        return ({"msg": "{} :Baka, that's not the command's syntax".format(receiver)},)
 
