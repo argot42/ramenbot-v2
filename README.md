@@ -32,3 +32,7 @@ ramenbot - Love-filled, handcrafted, bad-coded, python irc bot ❤
 	"db" : "~/.ramenbot/ramen.db"
 
 }
+
+###Dependencies
+* python3
+* sqlite3
