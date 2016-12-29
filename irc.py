@@ -42,7 +42,8 @@ class IRC:
     def connect(self):
         """ Main connection structure. Socket generation and check on connection status """
 
-        for retry_n in range(RETRY_TIMES):
+        retry_n = 0
+        while retry_n <= RETRY_TIMES:
             try:
                 ircsock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 ircsock.connect((self.host, self.port))
@@ -60,12 +61,15 @@ class IRC:
                     # single process ramenbot
                     self.start_single(ircsock)
 
+                retry_n = 0
+
             except ConnectionRefusedError as e:
                 print(e, file=sys.stderr)
                 pass
 
             print("Retrying in {}s...".format(RETRY_DELAY * (retry_n + 1), file=sys.stderr))
-            time.sleep(RETRY_DELAY * (retry_n + 1))
+            retry_n+=1
+            time.sleep(RETRY_DELAY * (retry_n))
 
 
     def server_login(self, ircsock):
@@ -92,7 +96,6 @@ class IRC:
 
     def kicked(ircsock, arg):
         print("Kicked!")
-        raise ircerror.IRCShutdown("Ramenbot has been kicked out")
 
 
     ################################### multi process ##########################################
