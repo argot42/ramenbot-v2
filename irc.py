@@ -89,8 +89,10 @@ class IRC:
         print("Pong! [{}]".format(datetime.datetime.now()))
         ircsock.send(bytes("PONG :{}\r\n".format(arg), "UTF-8")) 
 
+
     def kicked(ircsock, arg):
         print("Kicked!")
+        raise ircerror.IRCShutdown("Ramenbot has been kicked out")
 
 
     ################################### multi process ##########################################
@@ -118,6 +120,7 @@ class IRC:
             producer.join()
             consumer.join()
             timer.join()
+
         except KeyboardInterrupt:
             exit_event.clear()
             raise
