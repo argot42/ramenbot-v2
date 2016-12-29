@@ -6,6 +6,7 @@ from com_manager import Commanager
 from parser import Parser
 from database_manager import DBM
 from utils import RETRY_DELAY, RETRY_TIMES, MULTI, COMMANDS_DIR, SCHEMA, TIMEOUT, GOODBYE
+from timevent import Timevent
 
 import ircerror
 import commanderror
@@ -35,7 +36,7 @@ class IRC:
             raise
 
         # time events
-        self.time_event = {"ping": [[True, 0.0, TIMEOUT, self.command_manager.mkcom("test", [], "ramenbot", "#test", self.database)]]}
+        self.time_event = {"ping": Timevent(True, 0.0, TIMEOUT, self.command_manager.mkcom("test", [], "ramenbot", "#test", self.database))}
 
 
     def connect(self):
@@ -138,7 +139,7 @@ class IRC:
                 if irc_command != 'PRIVMSG':
                     if irc_command == 'PING':
                         IRC.ping(ircsock, irc_args)
-                        self.super_queue(msg_queue, self.command_manager.mkcom("ping", [], "ramenbot", "#test", self.database), msg_queue_event)
+                        self.super_queue(msg_queue, self.command_manager.mkcom("ping", [TIMEOUT], "ramenbot", "#test", self.database), msg_queue_event)
                     elif irc_command == 'KICK':
                         IRC.kicked(ircsock, irc_args)
                     elif irc_command == 'MODE':
@@ -226,21 +227,35 @@ class IRC:
     def timer(self, msg_queue, msg_queue_event, timer_queue, timer_queue_event):
         """ Checks time and trigger events """
         
-        last_time = time.monotonic()
+        last = time.monotonic()
         while True:
-    #        time.sleep(.5)
-    #        if timer_queue.empty(): continue
-    #        event = timer_queue.get()
-    #        if not event: break
-    #        print(event)
+
+            # check & update events
             now = time.monotonic()
-            
+            for _,tv in self.time_event.items():
+                tv.update(abs(now - last))
+
+                time.sleep(1)
+                if tv.is_time(): 
+                    tv.execute()
+
+            last = now 
+
+
             if timer_queue.empty(): continue
 
             event = timer_queue.get()
             if not event: break
 
+            print(event)
 
+            # check for event change
+            if event[0] == "reset":
+                self.time_event[event[1]].reset()
+            elif event[0] == "disable":
+                self.time_event[event[1]].disable()
+            elif event[0] == "enable":
+                self.time_event[event[1]].enable()
 
 
 
@@ -285,7 +300,7 @@ class IRC:
 
             except ValueError:
                 line_buffer = line_buffer + readbuffer
-                           
+     
 
     def send(self, answer, ircsock, timer_queue=None, timer_queue_event=None):
         try:
@@ -297,9 +312,10 @@ class IRC:
                     self.super_queue(timer_queue, msg["event"])
         
         except TypeError as err:
-            print(err, file=stderr)
+            print(err, file=sys.stderr)
             pass
             
+
     def super_queue(self, queue, data, event=None):
         # wait if queue is full
         if queue.full() and event: event.wait() 
