@@ -28,7 +28,7 @@ class Timevent:
 
 
     def is_time(self):
-        print(self.updated_time, "::::", self.end_time)
+        #print(self.updated_time, "::::", self.end_time)
         return self.end_time <= self.updated_time
 
 

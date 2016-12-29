@@ -181,7 +181,8 @@ class IRC:
 
         except OSError as e:
             # horrible hack to end listening thread life
-            print("File descriptor error, probably from disconnection exception")
+            # fix someday
+            print("File descriptor error, probably from disconnection exception", file=sys.stderr)
             pass
 
         except KeyboardInterrupt:
@@ -247,7 +248,12 @@ class IRC:
                     for _,tv in self.time_event.items():
                         tv.update(abs(now - last))
 
-                        if tv.is_time(): 
+                        if tv.is_time():
+                            ###################################
+                            # timer shouldn't execute commands
+                            # that's the answering thread's job
+                            # find workarround
+                            ####################################
                             self.super_queue(msg_queue, tv.execute(), msg_queue_event)
 
                 except commanderror.CommandException:
