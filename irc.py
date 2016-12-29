@@ -36,7 +36,7 @@ class IRC:
             raise
 
         # time events
-        self.time_event = {"ping": Timevent(True, 0.0, TIMEOUT, self.command_manager.mkcom("test", [], "ramenbot", "#test", self.database))}
+        self.time_event = {"ping": Timevent(True, 0.0, TIMEOUT, self.command_manager.mkcom("reset", None, None, None, None))}
 
 
     def connect(self):
@@ -179,11 +179,16 @@ class IRC:
         except ircerror.IRCShutdown as e:
             print(e.description, file=sys.stderr)
 
+        except OSError as e:
+            # horrible hack to end listening thread life
+            print("File descriptor error, probably from disconnection exception")
+            pass
+
         except KeyboardInterrupt:
             pass
 
         finally:
-            print("Closing listening process")
+            print("Closing listening thread")
             if msg_queue.full(): msg_queue_event.wait()
             msg_queue.put(None)
             msg_queue_event.set()
@@ -202,7 +207,10 @@ class IRC:
 
                 # if command is none, then listening process closed
                 # and we need to close this process as well
+                # if command is "reset" timer wants ramenbot to
+                # reset the connection with the server
                 if command == None: break;
+                elif command == "reset": raise ConnectionRefusedError
 
                 try:
                     # execute command and send command/event
@@ -218,7 +226,7 @@ class IRC:
         finally:
             timer_queue.put(None)
             timer_queue_event.set()
-            print("Closing answering process")
+            print("Closing answering thread")
             ircsock.send(bytes("QUIT {}\n\r".format(GOODBYE), "UTF-8"))
             ircsock.shutdown(socket.SHUT_RDWR)
             ircsock.close()
@@ -227,35 +235,51 @@ class IRC:
     def timer(self, msg_queue, msg_queue_event, timer_queue, timer_queue_event):
         """ Checks time and trigger events """
         
-        last = time.monotonic()
-        while True:
+        try:
+            last = time.monotonic()
+            while True:
 
-            # check & update events
-            time.sleep(1)
-            now = time.monotonic()
-            for _,tv in self.time_event.items():
-                tv.update(abs(now - last))
+                # check & update events
+                time.sleep(.5)
+                now = time.monotonic()
 
-                if tv.is_time(): 
-                    tv.execute()
+                try:
+                    for _,tv in self.time_event.items():
+                        tv.update(abs(now - last))
 
-            last = now 
+                        if tv.is_time(): 
+                            self.super_queue(msg_queue, tv.execute(), msg_queue_event)
+
+                except commanderror.CommandException:
+                    print("A command is no working properly, debug it!", file=sys.stderr)
+                    pass
+
+                last = now 
 
 
-            if timer_queue.empty(): continue
+                if timer_queue.empty(): continue
 
-            event = timer_queue.get()
-            if not event: break
+                event = timer_queue.get()
+                if not event: break
 
-            print(event)
+                print(event)
 
-            # check for event change
-            if event[0] == "reset":
-                self.time_event[event[1]].reset()
-            elif event[0] == "disable":
-                self.time_event[event[1]].disable()
-            elif event[0] == "enable":
-                self.time_event[event[1]].enable()
+                # check for event change
+                if event[0] == "reset":
+                    self.time_event[event[1]].reset()
+                elif event[0] == "disable":
+                    self.time_event[event[1]].disable()
+                elif event[0] == "enable":
+                    self.time_event[event[1]].enable()
+                    
+
+        except KeyboardInterrupt:
+            pass
+
+        finally:
+            # reset all events
+            for _,tv in self.time_event.items(): tv.reset()
+            print("Closing timer thread")
 
 
 
@@ -304,7 +328,6 @@ class IRC:
 
     def send(self, answer, ircsock, timer_queue=None, timer_queue_event=None):
         try:
-            #for msg in answer: ircsock.send(bytes("PRIVMSG {}\n\r".format(msg), "UTF-8"))
             for msg in answer:
                 try:
                     ircsock.send(bytes("PRIVMSG {}\n\r".format(msg["msg"]), "UTF-8"))

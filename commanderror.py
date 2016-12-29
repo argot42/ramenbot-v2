@@ -17,5 +17,6 @@ class NoCommandFound(ComErr):
     pass
 
 
-class CommandException:
+class CommandException(ComErr):
     pass
+
