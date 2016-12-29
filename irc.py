@@ -231,11 +231,11 @@ class IRC:
         while True:
 
             # check & update events
+            time.sleep(1)
             now = time.monotonic()
             for _,tv in self.time_event.items():
                 tv.update(abs(now - last))
 
-                time.sleep(1)
                 if tv.is_time(): 
                     tv.execute()
 
