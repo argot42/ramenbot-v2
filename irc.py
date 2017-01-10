@@ -318,7 +318,8 @@ class IRC:
             # if not ready check again
             if not ready_to_read: continue
 
-            readbuffer = ircsock.recv(1024).decode("UTF-8")
+            readbuffer = ircsock.recv(1024).decode("UTF-8", "ignore")
+
             # if buffer is '', then connection was close
             if not readbuffer: yield readbuffer
 
