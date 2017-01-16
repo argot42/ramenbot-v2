@@ -1,0 +1,5 @@
+#!/bin/bash
+
+cd /opt/ramenbot/ramenbot-v2
+
+exec python3 init.py $@

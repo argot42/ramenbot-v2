@@ -1,0 +1,48 @@
+#!/sbin/openrc-run
+# Copyright 1999-2017 Gentoo Foundation
+# Distributed under the terms of the GNU General Public License v2
+# $Id$
+
+conf="/opt/ramenbot/ramenbot-v2/docs/config.json"
+error_log="/var/log/ramenbot/error"
+stdout_log="/var/log/ramenbot/out"
+
+extra_started_commands="reload"
+
+depend() {
+	need net
+}
+
+start() {
+	ebegin "starting ramenbot"
+
+	start-stop-daemon --wait 5000 \
+	--background --start \
+	--exec /opt/ramenbot/ramenbot-v2/ramenbot \
+	-u ramenbot \
+	--make-pidfile --pidfile /var/run/ramen.pid \
+	-1 $stdout_log -2 $error_log \
+	-- $conf
+
+	eend $?
+}
+
+stop() {
+	ebegin "stoping ramenbot"
+
+	start-stop-daemon --stop \
+	--exec /opt/ramenbot/ramenbot-v2/ramenbot \
+	--pidfile /var/run/ramen.pid
+
+	eend $?
+}
+
+reload() {
+	ebegin "restarting ramenbot"
+	
+	start-stop-daemon --exec /opt/ramenbot/ramenbot-v2/ramenbot \
+	--pidfile /var/run/ramen.pid \
+	-s 1
+
+	eend $?
+}
