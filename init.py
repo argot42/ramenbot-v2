@@ -26,8 +26,8 @@ except json.decoder.JSONDecodeError:
 
 # try to connect to server
 try:
-    irc = IRC(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=os.path.expanduser(config['db']), 
-            ssl=config['ssl'], prefix=config['prefix'], password=config['password'])
+    irc = IRC(host=config['host'], port=config['port'], nick=config['nick'], channels=config['channels'], database=os.path.expanduser(config['db']), ssl=config['ssl'], prefix=config['prefix'], password=config['password'])
+
     irc.connect()
 
 except KeyError:

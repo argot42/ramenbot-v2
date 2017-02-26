@@ -40,7 +40,7 @@ class IRC:
 
 
     def connect(self):
-        """ Main connection structure. Socket generation and check on connection status """
+        """ Main connection structure. Socket generation and checking on connection status """
 
         retry_n = 0
         while retry_n <= RETRY_TIMES:
@@ -64,7 +64,10 @@ class IRC:
                 retry_n = 0
 
             except ConnectionRefusedError as e:
-                print(e, file=sys.stderr)
+                print(e)#, file=sys.stderr)
+                pass
+            except socket.gaierror as e:
+                print(e)
                 pass
 
             print("Retrying in {}s...".format(RETRY_DELAY * (retry_n + 1), file=sys.stderr))
@@ -81,6 +84,7 @@ class IRC:
         time.sleep(.5)
 
         if self.password:
+            # here goes nickserv login #
             print("pass")
             
 
@@ -145,7 +149,7 @@ class IRC:
                 if irc_command != 'PRIVMSG':
                     if irc_command == 'PING':
                         IRC.ping(ircsock, irc_args)
-                        self.super_queue(msg_queue, self.command_manager.mkcom("ping", [TIMEOUT], "ramenbot", "#test", self.database), msg_queue_event)
+                        self.super_queue(msg_queue, self.command_manager.mkcom("ping", [TIMEOUT], self.nick, "#test", self.database), msg_queue_event)
                     elif irc_command == 'KICK':
                         IRC.kicked(ircsock, irc_args)
                     elif irc_command == 'MODE':
@@ -155,7 +159,7 @@ class IRC:
 
                 # triggers
                 try:
-                    self.super_queue(msg_queue, self.command_manager.mkcom("checkon", None, sender, receiver, self.database), msg_queue_event)
+                    self.super_queue(msg_queue, self.command_manager.mkcom("checkon", None, self.nick, receiver, self.database), msg_queue_event)
 
                 except commanderror.NoCommandFound as e:
                     print("Trigger not working: {}".format(e.description), file=sys.stderr)
@@ -216,7 +220,7 @@ class IRC:
                 # and we need to close this process as well
                 # if command is "reset" timer wants ramenbot to
                 # reset the connection with the server
-                if command == None: break;
+                if command == None: break
                 elif command == "reset": raise ConnectionRefusedError
 
                 try:
@@ -303,6 +307,7 @@ class IRC:
     ############################################################################################
 
     def start_single(self, ircsock):
+        # this thing will never be done
         return True
 
     

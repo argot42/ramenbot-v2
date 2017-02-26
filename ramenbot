@@ -1,5 +1,7 @@
 #!/bin/bash
 
-cd /opt/ramenbot/ramenbot-v2
+# edit this script how you see it fit
+
+cd "~/ramenbot-v2"
 
 exec python3 init.py $@

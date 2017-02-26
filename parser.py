@@ -6,8 +6,13 @@ class Parser:
         msg = msg.replace('\r', '')
 
         if msg[0] != ':': 
-            command, arguments = msg.split(':')
-            return '', '', command.replace(' ', ''), arguments
+            # test borrar despues de probar
+            try:
+                command, arguments = msg.split(':')
+                return '', '', command.replace(' ', ''), arguments
+            except ValueError:
+                print(msg)
+                pass
 
         sender, command, rest = msg[1:].split(' ', 2)
 
